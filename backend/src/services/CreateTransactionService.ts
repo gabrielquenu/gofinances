@@ -1,37 +1,64 @@
-import TransactionsRepository from '../repositories/TransactionsRepository';
+import { getCustomRepository, getRepository } from 'typeorm';
+import AppError from '../errors/AppError';
+
 import Transaction from '../models/Transaction';
+import TransactionsRepository from '../repositories/TransactionsRepository';
+import Category from '../models/Category';
 
 interface Request {
-  title: string;
-  value: number;
   type: 'income' | 'outcome';
+  value: number;
+  title: string;
+  category: string;
 }
 
 class CreateTransactionService {
-  private transactionsRepository: TransactionsRepository;
+  public async execute({
+    title,
+    value,
+    type,
+    category,
+  }: Request): Promise<Transaction> {
+    const transactionsRepository = await getCustomRepository(
+      TransactionsRepository,
+    );
 
-  constructor(transactionsRepository: TransactionsRepository) {
-    this.transactionsRepository = transactionsRepository;
-  }
+    const categoryRepository = await getRepository(Category);
 
-  public execute({ title, value, type }: Request): Transaction {
-    if (type !== 'outcome' && type !== 'income') {
-      throw Error('Type needs to be income or outcome');
+    const { total } = await transactionsRepository.getBalance();
+
+    if (type === 'outcome' && total - value < 0) {
+      throw new AppError('There is no funds.');
     }
 
-    const {
-      total: balanceTotalValue,
-    } = this.transactionsRepository.getBalance();
+    const checkCategoryExists = await categoryRepository.findOne({
+      title: category,
+    });
 
-    if (type === 'outcome' && balanceTotalValue - value < 0) {
-      throw Error('You have no funds.');
+    if (checkCategoryExists) {
+      const transaction = await transactionsRepository.create({
+        title,
+        value,
+        type,
+        category_id: checkCategoryExists.id,
+      });
+
+      await transactionsRepository.save(transaction);
+      return transaction;
     }
-    const transaction = this.transactionsRepository.create({
+    const newCategory = await categoryRepository.create({
+      title: category,
+    });
+
+    await categoryRepository.save(newCategory);
+
+    const transaction = await transactionsRepository.create({
       title,
       value,
       type,
+      category_id: newCategory.id,
     });
-
+    await transactionsRepository.save(transaction);
     return transaction;
   }
 }

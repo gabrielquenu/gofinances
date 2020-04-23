@@ -1,3 +1,5 @@
+import { EntityRepository, Repository, getRepository } from 'typeorm';
+
 import Transaction from '../models/Transaction';
 
 interface Balance {
@@ -6,54 +8,38 @@ interface Balance {
   total: number;
 }
 
-interface CreateTransactionDTO {
-  id: string;
-  title: string;
-  value: number;
-  type: 'income' | 'outcome';
-}
+@EntityRepository(Transaction)
+class TransactionsRepository extends Repository<Transaction> {
+  public async getBalance(): Promise<Balance> {
+    const balancedValues: Balance = { income: 0, outcome: 0, total: 0 };
 
-class TransactionsRepository {
-  private transactions: Transaction[];
+    const { sum: income } = await getRepository(Transaction)
+      .createQueryBuilder('transaction')
+      .select('SUM(transaction.value)')
+      .where('transaction.type = :type', { type: 'income' })
+      .getRawOne();
 
-  constructor() {
-    this.transactions = [];
-  }
+    if (income === null) {
+      balancedValues.income = 0;
+    } else {
+      balancedValues.income = income;
+    }
 
-  public all(): Transaction[] {
-    return this.transactions;
-  }
+    const { sum: outcome } = await getRepository(Transaction)
+      .createQueryBuilder('transaction')
+      .select('SUM(transaction.value)')
+      .where('transaction.type = :type', { type: 'outcome' })
+      .getRawOne();
 
-  public getBalance(): Balance {
-    const totalIncome = this.transactions.reduce(
-      (accumulator, { value, type }) =>
-        type === 'income' ? accumulator + value : accumulator,
-      0,
-    );
+    if (outcome === null) {
+      balancedValues.outcome = 0;
+    } else {
+      balancedValues.outcome = outcome;
+    }
 
-    const totalOutcome = this.transactions.reduce(
-      (accumulator, { value, type }) =>
-        type === 'outcome' ? accumulator + value : accumulator,
-      0,
-    );
+    balancedValues.total = balancedValues.income - balancedValues.outcome;
 
-    const balanceTransactions: Balance = {
-      income: totalIncome,
-      outcome: totalOutcome,
-      total: totalIncome - totalOutcome,
-    };
-
-    return balanceTransactions;
-  }
-
-  public create({
-    title,
-    type,
-    value,
-  }: Omit<CreateTransactionDTO, 'id'>): Transaction {
-    const transaction = new Transaction({ title, type, value });
-    this.transactions.push(transaction);
-    return transaction;
+    return balancedValues;
   }
 }
 
