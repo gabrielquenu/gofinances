@@ -1,5 +1,6 @@
 import styled from 'styled-components';
 
+
 interface ContainerProps {
   size?: 'small' | 'large';
 }
@@ -21,14 +22,21 @@ export const Container = styled.div<ContainerProps>`
         color: #fff;
         text-decoration: none;
         font-size: 16px;
+        padding: 14px;
         transition: opacity 0.2s;
+        transition: background-color 0.8s;
+        border-bottom: 2px solid #ff872c;
+        border-radius: 10%;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
 
         & + a {
           margin-left: 32px;
         }
 
         &:hover {
-          opacity: 0.6;
+          background-color: #ff872c;
+
         }
       }
     }
