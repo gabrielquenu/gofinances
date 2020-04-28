@@ -1,5 +1,7 @@
 # Gofinaces
 
+  ![](gofinances.gif)
+
 ## Description 📄
 
   Gofinances is an app made with Node.JS and ReactJS. It receives financial transactions data from a CSV file and return the    balance of it. Also the application shows the history of incomes and outcomes transactions. All data is stored in a Postgres database and loaded from the same database. 
